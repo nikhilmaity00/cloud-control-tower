@@ -2,24 +2,10 @@ name: Cloud Control Tower
 
 on:
   pull_request:
-    paths:
-      - "control_tower/**"
-      - "deployments/**"
-      - "tests/**"
-      - "requirements.txt"
-      - "scripts/validate.sh"
-      - ".github/workflows/control-tower.yml"
 
   push:
     branches:
       - main
-    paths:
-      - "control_tower/**"
-      - "deployments/**"
-      - "tests/**"
-      - "requirements.txt"
-      - "scripts/validate.sh"
-      - ".github/workflows/control-tower.yml"
 
 jobs:
   validate:
