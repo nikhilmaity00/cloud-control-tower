@@ -9,17 +9,14 @@ variable "resource_group_name" {
   }
 }
 
-variable "subscription_id" {
-  description = "Azure subscription ID for the current KodeKloud session."
+variable "deployment_file" {
+  description = "Path to the deployment intent YAML file."
   type        = string
   nullable    = false
+  default     = "../deployments/example.yaml"
 
   validation {
-    condition = can(regex(
-      "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
-      var.subscription_id
-    ))
-
-    error_message = "subscription_id must be a valid Azure subscription UUID."
+    condition     = length(trimspace(var.deployment_file)) > 0
+    error_message = "deployment_file must not be empty."
   }
 }
