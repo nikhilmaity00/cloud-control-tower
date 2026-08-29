@@ -1,0 +1,10 @@
+application:
+  name: payments-api
+  image: mcr.microsoft.com/azuredocs/containerapps-helloworld:latest
+
+deployment:
+  environment: dev
+
+  replicas:
+    min: 1
+    max: 1
