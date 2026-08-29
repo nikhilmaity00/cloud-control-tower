@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 
+set -euo pipefail
+
 # ------------------------------------------------------------
 # Cloud Deployment Control Tower
 # KodeKloud Azure session bootstrap
 # ------------------------------------------------------------
-
-set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
@@ -44,12 +44,12 @@ bootstrap() {
     tenant_id="$(az account show --query tenantId -o tsv)"
 
     if [[ -z "$subscription_id" || -z "$tenant_id" ]]; then
-        echo "ERROR: Unable to determine Azure subscription or tenant."
+        echo "ERROR: Unable to determine the current Azure subscription or tenant."
         return 1
     fi
 
     # --------------------------------------------------------
-    # 3. Discover KodeKloud resource group
+    # 3. Discover the KodeKloud resource group
     # --------------------------------------------------------
 
     local resource_groups
@@ -57,12 +57,13 @@ bootstrap() {
     local resource_group_name
 
     resource_groups="$(az group list --query "[].name" -o tsv)"
+
     resource_groups="$(printf '%s\n' "$resource_groups" | sed '/^$/d')"
 
     resource_group_count="$(
         printf '%s\n' "$resource_groups" |
-        wc -l |
-        tr -d ' '
+            wc -l |
+            tr -d ' '
     )"
 
     if [[ "$resource_group_count" -eq 0 ]]; then
@@ -82,14 +83,7 @@ bootstrap() {
     resource_group_name="$resource_groups"
 
     # --------------------------------------------------------
-    # 4. Build session identity
-    # --------------------------------------------------------
-
-    local current_session
-    current_session="${subscription_id}|${tenant_id}|${resource_group_name}"
-
-    # --------------------------------------------------------
-    # 5. Display discovered environment
+    # 4. Display discovered environment
     # --------------------------------------------------------
 
     echo "Subscription  : $subscription_id"
@@ -98,14 +92,21 @@ bootstrap() {
     echo "--------------------------------"
 
     # --------------------------------------------------------
-    # 6. Detect KodeKloud session changes
+    # 5. Detect KodeKloud session changes
+    #
+    # Session identity is based on subscription, tenant and
+    # resource group. This prevents stale Terraform state from
+    # a previous KodeKloud session being reused.
     # --------------------------------------------------------
 
+    local current_session
     local session_changed=false
 
-    if [[ -f "$SESSION_FILE" ]]; then
+    current_session="${subscription_id}|${tenant_id}|${resource_group_name}"
 
+    if [[ -f "$SESSION_FILE" ]]; then
         local previous_session
+
         previous_session="$(cat "$SESSION_FILE")"
 
         if [[ "$previous_session" != "$current_session" ]]; then
@@ -120,13 +121,13 @@ bootstrap() {
             echo "  $current_session"
             echo
             echo "The existing Terraform state belongs to the previous"
-            echo "session and will be removed."
+            echo "KodeKloud session and will be removed."
             echo
         fi
     fi
 
     # --------------------------------------------------------
-    # 7. Reset stale Terraform state
+    # 6. Reset stale Terraform state
     # --------------------------------------------------------
 
     if [[ "$session_changed" == true ]]; then
@@ -146,7 +147,7 @@ bootstrap() {
     fi
 
     # --------------------------------------------------------
-    # 8. Generate Terraform variables
+    # 7. Generate Terraform variables
     # --------------------------------------------------------
 
     cat > "$TFVARS_FILE" <<EOF
@@ -154,21 +155,13 @@ resource_group_name = "$resource_group_name"
 EOF
 
     # --------------------------------------------------------
-    # 9. Export Terraform/Azure environment
-    # --------------------------------------------------------
-
-    export ARM_SUBSCRIPTION_ID="$subscription_id"
-    export ARM_TENANT_ID="$tenant_id"
-    export TF_VAR_resource_group_name="$resource_group_name"
-
-    # --------------------------------------------------------
-    # 10. Save session marker
+    # 8. Save current KodeKloud session marker
     # --------------------------------------------------------
 
     printf '%s\n' "$current_session" > "$SESSION_FILE"
 
     # --------------------------------------------------------
-    # 11. Final status
+    # 9. Final status
     # --------------------------------------------------------
 
     echo "Terraform environment configured."
@@ -182,18 +175,8 @@ EOF
     echo "Current resource group:"
     echo "  $resource_group_name"
     echo
-    echo "ARM_SUBSCRIPTION_ID:"
-    echo "  $ARM_SUBSCRIPTION_ID"
-    echo
-    echo "ARM_TENANT_ID:"
-    echo "  $ARM_TENANT_ID"
-    echo
     echo "Ready for Terraform."
     echo "--------------------------------"
 }
 
-# ------------------------------------------------------------
-# Execute only when run directly or explicitly sourced
-# ------------------------------------------------------------
-
-bootstrap
+bootstrap "$@"
